@@ -14,6 +14,8 @@ def args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--output_folder', required=True,
                         help='Folder where file is stored.')
+    parser.add_argument('--scheme', required=False,
+                        help='Integral method scheme.')
     return parser.parse_args()
 
 def main(args):
@@ -27,17 +29,18 @@ def main(args):
     file_prefix = cov_funct.get_prefix()
     # ---------------------------------------------------------------------------------------------
     # Hyperparameters -----------------------------------------------------------------------------
-    n_outcomes = 10
-    eigen_method_config = {'integral_unif': {'discret_size': 200, 'scheme': "unif", 'tol': 1e-12},
-                           'integral_trapez': {'discret_size': 200, 'scheme': "trapezium", 'tol': 1e-12}}
-    eigen = IntegralMethod.from_config(eigen_method_config['integral_trapez'], support)
+    n_outcomes = 5
+    discret_size = 1000
+    eigen_method = {'integral_unif': IntegralMethod("uniform", 1e-6),
+                    'integral_trapez': IntegralMethod("trapezium", 1e-6)}
+    eigen = eigen_method[args.scheme]
     # ---------------------------------------------------------------------------------------------
     # Output Configuration ------------------------------------------------------------------------
     saver = DataStorage(args.output_folder)
     # ---------------------------------------------------------------------------------------------
 
     # Apply integral method to get eigen from covariance function
-    discret_eigen = eigen.compute_eigen(cov_funct)
+    discret_eigen = eigen.compute_eigen_from_kernel(cov_funct, discret_size, support)
 
     # Compute Karhunen-Loeve expansions
     karlov = KarhunenLoeve(discret_eigen['time_line'],
@@ -58,11 +61,11 @@ def main(args):
     # TODO: Create analytical solution for Brownian proces.
     # Get Gaussian Process realizations from true eigen and store data
     # True eigen values
-    eigen_values_gt = np.array([1./(((k-1/2.)**2)*np.pi**2) for k in range(1, 200)])
+    eigen_values_gt = np.array([1./(((k-1/2.)**2)*np.pi**2) for k in range(1, discret_size)])
     # True eigen functions
     eigen_functs_gt = np.array([-np.sqrt(2)*np.sin(np.pi*t*(k-1./2))
                                 for t in discret_eigen['time_line']
-                                for k in range(1, 200)]).reshape(200, 199)
+                                for k in range(1, discret_size)]).reshape(discret_size, discret_size -1)
     # Karhunen-Loeve instance
     kar_gt = KarhunenLoeve(discret_eigen['time_line'], eigen_values_gt, eigen_functs_gt)
     # Get random samples
@@ -84,7 +87,7 @@ if __name__ == '__main__':
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Integral method",
+            "name": "IM: unif",
             "type": "python",
             "request": "launch",
             "program": "${workspaceFolder}/main.py",
@@ -92,6 +95,21 @@ if __name__ == '__main__':
             "args": [
                 "--output_folder",
                 "${workspaceFolder}/output",
+                "--scheme",
+                "integral_unif",
+            ]
+        },
+        {
+            "name": "IM: trapez",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/main.py",
+            "console": "integratedTerminal",
+            "args": [
+                "--output_folder",
+                "${workspaceFolder}/output",
+                "--scheme",
+                "integral_trapez",
             ]
         }
     ]
