@@ -26,19 +26,37 @@ class KarhunenLoeve:
         t_list = np.tile(self.time_line, len(self.time_line))[None]
         return np.concatenate([s_list, t_list, cov_list], axis=0).T
     
-    def get_process_sample(self, random_type: str = "Gaussian") -> np.ndarray:
+    def get_process_sample(self, randoms: str = "Gaussian") -> np.ndarray:
         """Compute a realization of the stochastic process with KLE."""
 
-        if random_type == "Gaussian":
-            # Compute random Gaussian realizations of expansion random variables
-            random_variables = np.random.normal(0, 1, len(self.eigen_values))
+        if isinstance(randoms, str):
+            if randoms == "Gaussian":
+                # Compute random Gaussian realizations of expansion random variables
+                random_variables = np.random.normal(0, 1, len(self.eigen_values))
+
+                # Compute Karhunen-Loeve expansion
+                return np.concatenate([self.time_line[None],
+                                    self.eigen_functs.dot(np.sqrt(self.eigen_values)*random_variables)[None]]).T
+            else:
+                raise Exception("Distribution:" + randoms + " not known.\n")
+        
+        if  isinstance(randoms, np.ndarray):
+            # Check shape
+            assert randoms.shape == self.eigen_values.shape
 
             # Compute Karhunen-Loeve expansion
-            return np.concatenate([self.time_line[None], 
-                                self.eigen_functs.dot(np.sqrt(self.eigen_values)*random_variables)[None]]).T
+            return np.concatenate([self.time_line[None],
+                                self.eigen_functs.dot(np.sqrt(self.eigen_values)*randoms)[None]]).T
     
-    def get_process_samples(self, sample_size: int, random_type: str = "Gaussian") -> list:
+    def get_process_samples(self, randoms: (str or list) = "Gaussian", sample_size: int = -1) -> list:
         """Compute multiple realizations of the stochastic process with KLE."""
 
-        with multiprocessing.Pool() as pool:
-            return pool.map(self.get_process_sample, [random_type]*sample_size)
+        if isinstance(randoms, str):
+            assert sample_size > 0
+            with multiprocessing.Pool() as pool:
+                return pool.map(self.get_process_sample, [randoms]*sample_size)
+        
+        if isinstance(randoms, list):
+            print("Argument \"sample_size\" not used\n")
+            with multiprocessing.Pool() as pool:
+                return pool.map(self.get_process_sample, randoms)

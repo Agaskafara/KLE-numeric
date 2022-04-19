@@ -3,7 +3,7 @@ import argparse
 import numpy as np
 
 # Import our classes and functions
-from eigen_numeric import IntegralMethod
+from eigen_numeric import HaarMethod
 from covariances import Brownian
 from karhunen import KarhunenLoeve
 from save_output import DataStorage
@@ -14,8 +14,6 @@ def args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--output_folder', required=True,
                         help='Folder where file is stored.')
-    parser.add_argument('--scheme', required=False,
-                        help='Integral method scheme.')
     return parser.parse_args()
 
 def main(args):
@@ -29,11 +27,9 @@ def main(args):
     file_prefix = cov_funct.get_prefix()
     # ---------------------------------------------------------------------------------------------
     # Hyperparameters -----------------------------------------------------------------------------
-    n_outcomes = 2
-    discret_size = 200
-    eigen_method = {'integral_unif': IntegralMethod("uniform", 1e-6),
-                    'integral_trapez': IntegralMethod("trapezium", 1e-6)}
-    eigen = eigen_method[args.scheme]
+    n_outcomes = 1
+    discret_size = 2**4
+    eigen = HaarMethod()
     # ---------------------------------------------------------------------------------------------
     # Output Configuration ------------------------------------------------------------------------
     saver = DataStorage(args.output_folder)

@@ -11,14 +11,9 @@ class Eigen(ABC):
     def compute_eigen_from_kernel(self, cov_funct, size: int, int_lims: list) -> dict:
         pass
 
-    @abstractmethod
-    def compute_eigen_from_matrix(self, cov_matrix, seq: np.ndarray) -> dict:
-        pass
 
-
-# Integral method
 class IntegralMethod(Eigen):
-    """Solution to Fredholm integral equation by Integral discretization."""
+    """Study of eigen from Fredholm integral equation by discretization."""
 
     def __init__(self, scheme: str = "uniform", tol: float = 1.e-12):
 
@@ -119,3 +114,91 @@ class Trapezium(SchemeIM):
         coeffs[0, 0] = (2*(size - 1))/(int_length)
         coeffs[-1, -1] = (2*(size - 1))/(int_length)
         return np.sqrt(coeffs)
+
+
+class HaarMethod(Eigen):
+    """Haar expansion method applied to eigen for Fredholm integral equation."""
+
+    def __init__(self, tol: float = 1e-6):
+
+        self.tol = tol
+    
+    def _generic_haar_wavelet(self, j: int, k: int, x: float):
+        """Evaluate the haar wavelet functions."""
+
+        # Return wavelet function value
+        if x > k*2**(-j) and x < k*2**(-j) + 2**(-j -1):
+            return 1
+        elif x >= k*2**(-j) + 2**(-j -1) and x < k*2**(-j) + 2**(-j):
+            return -1
+        else:
+            return 0
+    
+    def _get_wavelet_basis(self, size_power: int):
+        """Build a discrete wavelet basis in a specific time line and
+            compute the theorical inner products matrix."""
+
+        # Retrieve size
+        size = 2**size_power
+
+        # Set Haar rescaled time line array to [0,1]
+        time_line = (2*np.arange(size) + 1)/(2*size)
+
+        # Compute raw wavelet indices
+        wavelet_indices = [(j, k) for j in range(size_power) for k in range(2**j)]
+
+        # Compute the matrix with the dot products between basis elements
+        basis_norm_matrix = np.diag(2**(-np.array([(0., 0.)] + wavelet_indices)[:, 0]))
+
+        # Compute wavelet index and evaluating point
+        wavelet_input = [(j, k, x) for j, k in wavelet_indices for x in time_line]
+
+        # Compute the discret haar basis
+        with multiprocessing.Pool() as pool:
+            haar_discrete_basis = np.array([1]*size + 
+                                           pool.starmap(self._generic_haar_wavelet,
+                                                        wavelet_input)).reshape(-1, size)
+        return time_line, basis_norm_matrix, haar_discrete_basis
+
+    def _evaluate_cov_funct_multiprocessing(self, cov_funct_, seq: np.ndarray) -> np.ndarray:
+        """Evaluate the covariance function in an seq grid."""
+
+        with multiprocessing.Pool() as pool:
+            return np.array(pool.starmap(cov_funct_.compute,
+                                         [(s,t) for s in seq \
+                                             for t in seq])).reshape(len(seq), -1)
+
+    def _compute_eigen_numpy(self, matrix: np.ndarray):
+        """Compute the haar expansion basis coeficients."""
+        np.linalg.eig(matrix)
+
+    def compute_eigen_from_kernel(self, cov_funct, size: int, int_lims: list) -> dict:
+        """Compute no-zero eigen values and their corresponding eigen functions from cov-function."""
+
+        # size argument must be a power of 2
+        assert size in [2**j for j in range(size)]
+
+        # Get exponent n: size = 2**n
+        size_power = int(np.log2(size))
+
+        # Get discrete wavelet basis
+        generic_time_line, inner_products, phi_basis = self._get_wavelet_basis(size_power)
+        phi_inv = np.linalg.inv(phi_basis)
+        # Compute the coefficient matrix for the covariance function
+        time_line = generic_time_line*(int_lims[1] - int_lims[0]) + int_lims[0]
+        cov_matrix = self._evaluate_cov_funct_multiprocessing(cov_funct, time_line)
+
+        # Compute the 2D wavelet transform of cov_matrix
+        cov_transform = (phi_inv.T).dot(cov_matrix.dot(phi_inv))
+
+        # Compute eigen values and vectors of cov_transform
+        eigen_matrix = np.sqrt(inner_products).dot(cov_transform).dot(np.sqrt(inner_products))
+        values, functs_transform = np.linalg.eig(eigen_matrix)
+        functs = (phi_basis.T).dot(np.diag(1/np.sqrt(np.diag(inner_products)))).dot(functs_transform)
+
+        # Filter basis
+        sel_indxs = values > self.tol
+        return {'time_line': time_line,
+                'eigen_values': values[sel_indxs],
+                'eigen_functs': functs[:, sel_indxs]}
+
