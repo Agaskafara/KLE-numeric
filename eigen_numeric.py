@@ -1,7 +1,7 @@
 # Import libraries
 from abc import ABC, abstractmethod
-import numpy as np
 import multiprocessing
+import numpy as np
 
 
 class Eigen(ABC):
@@ -9,7 +9,7 @@ class Eigen(ABC):
 
     @abstractmethod
     def compute_eigen_from_kernel(self, cov_funct, size: int, int_lims: list) -> dict:
-        pass
+        """Compute eigen from a given covariance function."""
 
 
 class IntegralMethod(Eigen):
@@ -19,7 +19,7 @@ class IntegralMethod(Eigen):
 
         self.tol = tol
         self.scheme = self._get_scheme(scheme)
-    
+
     def _get_scheme(self, scheme: str):
         """Get Scheme class given an identifier string."""
 
@@ -37,23 +37,23 @@ class IntegralMethod(Eigen):
 
         with multiprocessing.Pool() as pool:
             return np.array(pool.starmap(cov_funct_.compute,
-                                         [(s,t) for s in seq \
-                                             for t in seq])).reshape(len(seq), -1)
-    
+                                         [(s, t) for s in seq \
+                                          for t in seq])).reshape(len(seq), -1)
+
     def _compute_eigen_numpy(self, cov_matrix: np.ndarray, seq: np.ndarray) -> np.ndarray:
         """Compute eigen from COV*Weights"""
 
-        return np.linalg.eig(np.sqrt(self.scheme.get_weights(seq)).dot(\
-            cov_matrix).dot(np.sqrt(self.scheme.get_weights(seq))))
-    
+        vaps, veps = np.linalg.eig(np.sqrt(self.scheme.get_weights(seq)).dot(\
+                                   cov_matrix).dot(np.sqrt(self.scheme.get_weights(seq))))
+        return np.real(vaps)[np.imag(vaps) < self.tol], np.real(veps)[:, np.imag(vaps) < self.tol]
+
     def compute_eigen_from_kernel(self, cov_funct, size: int, int_lims: list) -> dict:
-        """Compute no-zero eigen values and their corresponding eigen functions from cov-function."""
+        """Compute non-zero eigen values and eigen functions from cov-function."""
 
         seq = np.linspace(int_lims[0], int_lims[1], size)
         cov_matrix = self._evaluate_cov_funct_multiprocessing(cov_funct, seq)
         return self.compute_eigen_from_matrix(cov_matrix, seq)
-        
-    
+
     def compute_eigen_from_matrix(self, cov_matrix: np.ndarray, seq: np.ndarray) -> dict:
         """Compute no-zero eigen values and their corresponding eigen functions from cov-matrix."""
 
@@ -64,19 +64,17 @@ class IntegralMethod(Eigen):
                 'eigen_functs': self.scheme.get_coeffs(seq).dot(functs[:, sel_indxs])}
 
 
-
 class SchemeIM(ABC):
-    """Structure to get weights matrix and its half-inversed matrix."""
+    """Structure to get weights matrix and its inverse matrix."""
 
     @abstractmethod
     def get_weights(self, seq: np.ndarray) -> np.ndarray:
         """Return W."""
-        pass
 
     @abstractmethod
     def get_coeffs(self, seq: np.ndarray) -> np.ndarray:
         """Return (W)^(-1./2)"""
-        pass
+
 
 class Uniform(SchemeIM):
     """Uniform scheme."""
@@ -86,7 +84,7 @@ class Uniform(SchemeIM):
 
         size, int_length = len(seq), seq[-1] - seq[0]
         return np.identity(size)*(int_length)/size
-    
+
     def get_coeffs(self, seq: np.ndarray) -> np.ndarray:
         """compute coefficients for eigen functions."""
 
@@ -105,7 +103,7 @@ class Trapezium(SchemeIM):
         weights[0, 0] = (int_length)/(2*(size - 1))
         weights[-1, -1] = (int_length)/(2*(size - 1))
         return weights
-    
+
     def get_coeffs(self, seq: np.ndarray) -> np.ndarray:
         """compute coefficients for eigen functions."""
 
@@ -119,21 +117,21 @@ class Trapezium(SchemeIM):
 class HaarMethod(Eigen):
     """Haar expansion method applied to eigen for Fredholm integral equation."""
 
-    def __init__(self, tol: float = 1e-6):
+    def __init__(self, tol: float = 1e-12):
 
         self.tol = tol
-    
-    def _generic_haar_wavelet(self, j: int, k: int, x: float):
+
+    def _generic_haar_wavelet(self, j: int, k: int, x: float) -> float:
         """Evaluate the haar wavelet functions."""
 
         # Return wavelet function value
-        if x > k*2**(-j) and x < k*2**(-j) + 2**(-j -1):
-            return 1
-        elif x >= k*2**(-j) + 2**(-j -1) and x < k*2**(-j) + 2**(-j):
-            return -1
+        if k*2**(-j) < x < k*2**(-j) + 2**(-j - 1):
+            return 1.
+        elif k*2**(-j) + 2**(-j - 1) <= x < k*2**(-j) + 2**(-j):
+            return -1.
         else:
-            return 0
-    
+            return 0.
+
     def _get_wavelet_basis(self, size_power: int):
         """Build a discrete wavelet basis in a specific time line and
             compute the theorical inner products matrix."""
@@ -155,7 +153,7 @@ class HaarMethod(Eigen):
 
         # Compute the discret haar basis
         with multiprocessing.Pool() as pool:
-            haar_discrete_basis = np.array([1]*size + 
+            haar_discrete_basis = np.array([1]*size +
                                            pool.starmap(self._generic_haar_wavelet,
                                                         wavelet_input)).reshape(-1, size)
         return time_line, basis_norm_matrix, haar_discrete_basis
@@ -165,15 +163,17 @@ class HaarMethod(Eigen):
 
         with multiprocessing.Pool() as pool:
             return np.array(pool.starmap(cov_funct_.compute,
-                                         [(s,t) for s in seq \
+                                         [(s, t) for s in seq \
                                              for t in seq])).reshape(len(seq), -1)
 
-    def _compute_eigen_numpy(self, matrix: np.ndarray):
+    def _compute_eigen_numpy(self, matrix: np.ndarray) -> tuple:
         """Compute the haar expansion basis coeficients."""
-        np.linalg.eig(matrix)
+
+        vaps, veps = np.linalg.eig(matrix)
+        return np.real(vaps)[np.imag(vaps) < self.tol], np.real(veps)[:, np.imag(vaps) < self.tol]
 
     def compute_eigen_from_kernel(self, cov_funct, size: int, int_lims: list) -> dict:
-        """Compute no-zero eigen values and their corresponding eigen functions from cov-function."""
+        """Compute non-zero eigen values and eigen functions from cov-function."""
 
         # size argument must be a power of 2
         assert size in [2**j for j in range(size)]
@@ -182,7 +182,7 @@ class HaarMethod(Eigen):
         size_power = int(np.log2(size))
 
         # Get discrete wavelet basis
-        generic_time_line, inner_products, phi_basis = self._get_wavelet_basis(size_power)
+        generic_time_line, generic_inner_products, phi_basis = self._get_wavelet_basis(size_power)
         phi_inv = np.linalg.inv(phi_basis)
         # Compute the coefficient matrix for the covariance function
         time_line = generic_time_line*(int_lims[1] - int_lims[0]) + int_lims[0]
@@ -192,8 +192,9 @@ class HaarMethod(Eigen):
         cov_transform = (phi_inv.T).dot(cov_matrix.dot(phi_inv))
 
         # Compute eigen values and vectors of cov_transform
+        inner_products = (int_lims[1] - int_lims[0])*generic_inner_products
         eigen_matrix = np.sqrt(inner_products).dot(cov_transform).dot(np.sqrt(inner_products))
-        values, functs_transform = np.linalg.eig(eigen_matrix)
+        values, functs_transform = self._compute_eigen_numpy(eigen_matrix)
         functs = (phi_basis.T).dot(np.diag(1/np.sqrt(np.diag(inner_products)))).dot(functs_transform)
 
         # Filter basis
@@ -201,4 +202,3 @@ class HaarMethod(Eigen):
         return {'time_line': time_line,
                 'eigen_values': values[sel_indxs],
                 'eigen_functs': functs[:, sel_indxs]}
-

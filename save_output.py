@@ -3,17 +3,18 @@ import numpy as np
 
 
 class DataStorage:
+    """Allows the user to save data to be opened with gnuplot later."""
 
     def __init__(self, dir_path: str):
         self.folder = dir_path
         self._check_folder()
-    
+
     def _check_folder(self) -> None:
-        """Check if directory path exists and make it if it doesnt."""
+        """Check if directory path exists and make it if it doesn't."""
 
         if not os.path.exists(self.folder):
             os.makedirs(self.folder)
-    
+
     def _get_file_path(self, filename: str, extension: str) -> str:
         """Get file path."""
 
@@ -26,7 +27,7 @@ class DataStorage:
         file_id = open(self._get_file_path(filename, extension), mode)
         np.savetxt(file_id, data)
         file_id.close()
-    
+
     def save_numpies(self, filename: str, data_list: list,
                      mode: str = 'w', extension: str = '.txt') -> None:
         """Save multiples numpy arrays into a file."""

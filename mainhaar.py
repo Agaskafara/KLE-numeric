@@ -4,7 +4,7 @@ import numpy as np
 
 # Import our classes and functions
 from eigen_numeric import HaarMethod
-from covariances import Brownian
+from covariances import *
 from karhunen import KarhunenLoeve
 from save_output import DataStorage
 
@@ -27,8 +27,8 @@ def main(args):
     file_prefix = cov_funct.get_prefix()
     # ---------------------------------------------------------------------------------------------
     # Hyperparameters -----------------------------------------------------------------------------
-    n_outcomes = 1
-    discret_size = 2**4
+    n_outcomes = 5
+    discret_size = 2**9
     eigen = HaarMethod()
     # ---------------------------------------------------------------------------------------------
     # Output Configuration ------------------------------------------------------------------------
@@ -42,7 +42,7 @@ def main(args):
     karlov = KarhunenLoeve(discret_eigen['time_line'],
                            discret_eigen['eigen_values'],
                            discret_eigen['eigen_functs'])
-    
+
     # Get covariance function from Mercer expansion and store data
     saver.save_numpy(file_prefix + 'cov_data', karlov.get_covariance())
 
@@ -55,15 +55,14 @@ def main(args):
     kar_data = karlov.get_process_samples(randoms_list)
     saver.save_numpies(file_prefix + 'kar_data', kar_data)
 
-    # TODO: Create analytical solution for Brownian proces.
-    # Get Gaussian Process realizations from true eigen and store data
     # True eigen values
-    eigen_values_gt = np.array([1./(((k+1/2.)**2)*np.pi**2)
+    eigen_values_gt = np.array([support[1]**2/(((k+1/2.)**2)*np.pi**2)
                                 for k in range(len(discret_eigen['eigen_values']))])
     # True eigen functions
-    eigen_functs_gt = np.array([np.sqrt(2)*np.sin(np.pi*t*(k+1./2))
+    eigen_functs_gt = np.array([np.sqrt(2/support[1])*np.sin(np.pi*t*(k+1./2)/support[1])
                                 for t in discret_eigen['time_line']
-                                for k in range(len(discret_eigen['eigen_values']))]).reshape(discret_size, -1)
+                                for k in range(len(discret_eigen['eigen_values']))]).reshape(\
+                                    discret_size, -1)
     # Get right sign
     nozero_sign = True
     row_indx = 0

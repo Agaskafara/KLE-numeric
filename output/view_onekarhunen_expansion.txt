@@ -1,0 +1,2 @@
+# Brownian
+plot "brownian_one_kar_data.txt" u 1:2 with lines

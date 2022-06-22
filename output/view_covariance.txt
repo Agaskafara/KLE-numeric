@@ -1,0 +1,6 @@
+set hidden3d
+#set dgrid3d 1000,1000
+
+
+# Brownian
+splot "brownian_cov_data.txt" u 1:2:3 with lines
