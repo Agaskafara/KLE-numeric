@@ -4,3 +4,16 @@ set hidden3d
 
 # Brownian
 splot "brownian_cov_data.txt" u 1:2:3 with lines
+
+# Brownian Bridge
+splot "brownian_bridge_cov_data.txt" u 1:2:3 with lines
+
+# OrnsteinUhlenbeck
+splot "Ornstein-Uhlenbeck_cov_data.txt" u 1:2:3 with lines
+
+# Exponential
+splot "exponential_cov_data.txt" u 1:2:3 with lines
+
+# Squared Exponential
+splot "squared-exponential_cov_data.txt" u 1:2:3 with lines
+

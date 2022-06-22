@@ -14,3 +14,7 @@ plot "Ornstein-Uhlenbeck_kar_data.txt" u 1:2 with  lines lc 'red'
 set size square
 plot "exponential_kar_data.txt" u 1:2 with  lines lc 'red'
 
+# Squared Exponential
+set size square
+plot "squared-exponential_kar_data.txt" u 1:2 with  lines lc 'red'
+

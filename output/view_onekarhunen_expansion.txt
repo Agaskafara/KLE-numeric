@@ -1,2 +1,22 @@
 # Brownian
 plot "brownian_one_kar_data.txt" u 1:2 with lines
+
+# Brownian
+set size square
+plot "brownian_one_kar_data.txt" u 1:2 with  lines lc 'red'
+
+# Brownian Bridge
+set size square
+plot "brownian_bridge_one_kar_data.txt" u 1:2 with  lines lc 'red'
+
+# OrnsteinUhlenbeck
+set size square
+plot "Ornstein-Uhlenbeck_one_kar_data.txt" u 1:2 with  lines lc 'red'
+
+# Exponential
+set size square
+plot "exponential_one_kar_data.txt" u 1:2 with  lines lc 'red'
+
+# Squared Exponential
+set size square
+plot "squared-exponential_one_kar_data.txt" u 1:2 with  lines lc 'red'
