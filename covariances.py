@@ -14,6 +14,24 @@ class CovFunct(ABC):
         """Evaluate covariance function at given points."""
 
 
+class WhiteNoise(CovFunct):
+    """Covariance function for a WhiteNoise process."""
+
+    def __init__(self, sigma: float = 1):
+        self.sigma = sigma
+
+    def get_prefix(self) -> str:
+        """Get WhiteNoise identifier."""
+
+        return 'white-noise_'
+
+    def compute(self, s: float, t: float) -> float:
+        """Evaluate white-noise covariance function at given points."""
+
+        assert t >= 0 and s >= 0
+        return (self.sigma**2 if s == t else 0)
+
+
 class Brownian(CovFunct):
     """Covariance function for a Brownian process."""
 

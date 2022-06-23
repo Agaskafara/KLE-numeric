@@ -17,3 +17,6 @@ splot "exponential_cov_data.txt" u 1:2:3 with lines
 # Squared Exponential
 splot "squared-exponential_cov_data.txt" u 1:2:3 with lines
 
+# White-Noise
+splot "white-noise_cov_data.txt" u 1:2:3 with lines
+

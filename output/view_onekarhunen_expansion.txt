@@ -20,3 +20,7 @@ plot "exponential_one_kar_data.txt" u 1:2 with  lines lc 'red'
 # Squared Exponential
 set size square
 plot "squared-exponential_one_kar_data.txt" u 1:2 with  lines lc 'red'
+
+# White-noise
+set size square
+plot "white-noise_one_kar_data.txt" u 1:2 with  lines lc 'red'
